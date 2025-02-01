@@ -20,6 +20,13 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "unfold",  # before django.contrib.admin
+    "unfold.contrib.filters",  # optional, if special filters are needed
+    "unfold.contrib.forms",  # optional, if special form elements are needed
+    "unfold.contrib.inlines",  # optional, if special inlines are needed
+    "unfold.contrib.import_export",  # optional, if django-import-export package is used
+    "unfold.contrib.guardian",  # optional, if django-guardian package is used
+    "unfold.contrib.simple_history",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -117,3 +124,35 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+from django.templatetags.static import static
+from django.urls import reverse_lazy
+from django.utils.translation import gettext_lazy as _
+
+UNFOLD = {
+    "SITE_TITLE": "Finch Adminstration",
+    "SITE_HEADER": "Finch Adminstration",
+    "SITE_URL": "/",
+    # "SITE_ICON": lambda request: static("icon.svg"),  # both modes, optimise for 32px height
+    # "SITE_ICON": {
+    #     "light": lambda request: static("icon-light.svg"),  # light mode
+    #     "dark": lambda request: static("icon-dark.svg"),  # dark mode
+    # },
+    # # "SITE_LOGO": lambda request: static("logo.svg"),  # both modes, optimise for 32px height
+    # "SITE_LOGO": {
+    #     "light": lambda request: static("logo-light.svg"),  # light mode
+    #     "dark": lambda request: static("logo-dark.svg"),  # dark mode
+    # },
+    "SITE_SYMBOL": "speed",  # symbol from icon set
+    # "SITE_FAVICONS": [
+    #     {
+    #         "rel": "icon",
+    #         "sizes": "32x32",
+    #         "type": "image/svg+xml",
+    #         "href": lambda request: static("favicon.svg"),
+    #     },
+    # ],
+    "SHOW_HISTORY": True, # show/hide "History" button, default: True
+    "SHOW_VIEW_ON_SITE": True, # show/hide "View on site" button, default: True
+}
