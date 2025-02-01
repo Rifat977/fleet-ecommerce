@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from django.contrib import admin
-admin.site.unregister(User)
+# admin.site.unregister(User)
 
 
 from django.contrib import admin
@@ -9,10 +9,12 @@ from unfold.contrib.forms.widgets import ArrayWidget, WysiwygWidget
 from django.db import models
 from django.contrib.auth.admin import UserAdmin
 from .models import *
+import json
+
 
 @admin.register(User)
 class CustomUserAdmin(ModelAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_verified')
     list_filter = ('is_staff', 'is_active')
     search_fields = ('username', 'email')
     ordering = ('username',)
@@ -20,7 +22,7 @@ class CustomUserAdmin(ModelAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'email')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_verified', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
 
@@ -51,32 +53,78 @@ class TagAdmin(ModelAdmin):
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
 
-@admin.register(Brand)
-class BrandAdmin(ModelAdmin):
-    list_display = ("name", "slug")
-    search_fields = ("name", "slug")
-    prepopulated_fields = {"slug": ("name",)}
+@admin.register(Size)
+class SizeAdmin(ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+    ordering = ('name',)
 
-@admin.register(Product)
+@admin.register(Color)
+class ColorAdmin(ModelAdmin):
+    list_display = ('name', 'hex_code')
+    search_fields = ('name', 'hex_code')
+    ordering = ('name',)
+
+# @admin.register(Product)
+# class ProductAdmin(ModelAdmin):
+#     list_display = ("name", "price", "stock_quantity", "category", "brand", "discounted_price")
+#     list_filter = ("category", "brand", "created_at")
+#     search_fields = ("name", "slug", "barcode")
+#     prepopulated_fields = {"slug": ("name",)}
+#     formfield_overrides = {
+#         models.JSONField: {"widget": ArrayWidget()},
+#         models.TextField: {"widget": WysiwygWidget()},
+#     }
+
+# @admin.register(ProductVariant)
+# class ProductVariantAdmin(ModelAdmin):
+#     list_display = ("product", "name", "value")
+#     search_fields = ("product__name", "name", "value")
+
+# Inline admin for ProductImage
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1  
+    fields = ('image', 'alt_text') 
+
+
 class ProductAdmin(ModelAdmin):
-    list_display = ("name", "price", "stock_quantity", "category", "brand", "discounted_price")
-    list_filter = ("category", "brand", "created_at")
-    search_fields = ("name", "slug", "barcode")
-    prepopulated_fields = {"slug": ("name",)}
+    list_display = ('name', 'price', 'discount', 'stock_quantity', 'slug', 'category', 'created_at')
+    search_fields = ('name', 'slug', 'barcode', 'category__name')
+    list_filter = ('category', 'created_at')
+
+    inlines = [ProductImageInline]
+
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'slug', 'description', 'price', 'discount', 'barcode', 'stock_quantity')
+        }),
+        ('SEO', {
+            'fields': ('seo_title', 'seo_description', 'seo_keywords')
+        }),
+        ('Relations', {
+            'fields': ('category', 'tags', 'color', 'size')
+        }),
+        ('Media', {
+            'fields': ('image',)
+        }),
+    )
+
     formfield_overrides = {
-        models.JSONField: {"widget": ArrayWidget()},
-        models.TextField: {"widget": WysiwygWidget()},
+        models.TextField: {'widget': WysiwygWidget},  
+        models.JSONField: {'widget': ArrayWidget},   
     }
 
-@admin.register(ProductVariant)
-class ProductVariantAdmin(ModelAdmin):
-    list_display = ("product", "name", "value")
-    search_fields = ("product__name", "name", "value")
+admin.site.register(Product, ProductAdmin)
+admin.site.register(ProductImage)
 
-@admin.register(ProductImage)
-class ProductImageAdmin(ModelAdmin):
-    list_display = ("product", "image", "alt_text")
-    search_fields = ("product__name", "alt_text")
+
+# @admin.register(ProductImage)
+# class ProductImageAdmin(ModelAdmin):
+#     list_display = ("product", "image", "alt_text")
+#     search_fields = ("product__name", "alt_text")
+
+
 
 @admin.register(Wishlist)
 class WishlistAdmin(ModelAdmin):

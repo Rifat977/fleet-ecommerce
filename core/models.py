@@ -7,7 +7,8 @@ class User(AbstractUser):
         ('sales_rep', 'Sales Representative'),
         ('customer', 'Customer'),
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    is_verified = models.BooleanField(default=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
 
@@ -90,34 +91,60 @@ class Tag(models.Model):
         verbose_name_plural = "            Tags"
 
 
-class Brand(models.Model):
-    name = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True)
+class Size(models.Model):
+    name = models.CharField(max_length=50, unique=True) 
 
     def __str__(self):
         return self.name
 
     class Meta:
-        verbose_name = "Brand"
-        verbose_name_plural = "           Brands"
+        verbose_name = "Size"
+        verbose_name_plural = "           Sizes"
+        ordering = ['name']
+
+
+class Color(models.Model):
+    name = models.CharField(max_length=50, unique=True) 
+    hex_code = models.CharField(max_length=7, unique=True, help_text="Hex color code, e.g., #FF5733")
+
+    def __str__(self):
+        return f"{self.name} ({self.hex_code})"
+
+    class Meta:
+        verbose_name = "Color"
+        verbose_name_plural = "           Colors"
+        ordering = ['name']
 
 
 class Product(models.Model):
+    # Basic product details
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
     description = models.TextField()
+    
+    # Price and discount
     price = models.DecimalField(max_digits=10, decimal_places=2)
     discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Discount in percentage
+    
+    # Barcode and stock
     barcode = models.CharField(max_length=100, unique=True)
-    colors = models.JSONField(blank=True, null=True)  # List of available colors
+    stock_quantity = models.PositiveIntegerField()
+
+    # Product attributes
+    color = models.ForeignKey(Color, on_delete=models.CASCADE, related_name="colors")
+    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name="sizes")
     seo_title = models.CharField(max_length=255, blank=True, null=True)
     seo_description = models.TextField(blank=True, null=True)
-    seo_keywords = models.CharField(max_length=255, blank=True, null=True)
+    seo_keywords = models.TextField(blank=True, null=True)
+
+    # Relations
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
     tags = models.ManyToManyField(Tag, blank=True)
-    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name="products")
-    stock_quantity = models.PositiveIntegerField()
+
+    # Media
     image = models.ImageField(upload_to="products/images", blank=True, null=True)
+    
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
