@@ -121,6 +121,7 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
     description = models.TextField()
+    is_featured = models.BooleanField(default=False)
     
     # Price and discount
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -131,8 +132,8 @@ class Product(models.Model):
     stock_quantity = models.PositiveIntegerField()
 
     # Product attributes
-    color = models.ForeignKey(Color, on_delete=models.CASCADE, related_name="colors")
-    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name="sizes")
+    color = models.ManyToManyField(Color, blank=True)
+    size = models.ManyToManyField(Size, blank=True)
     seo_title = models.CharField(max_length=255, blank=True, null=True)
     seo_description = models.TextField(blank=True, null=True)
     seo_keywords = models.TextField(blank=True, null=True)

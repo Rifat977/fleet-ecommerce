@@ -14,7 +14,7 @@ import json
 
 @admin.register(User)
 class CustomUserAdmin(ModelAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_verified')
+    list_display = ('email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_verified', 'role')
     list_filter = ('is_staff', 'is_active')
     search_fields = ('username', 'email')
     ordering = ('username',)
@@ -22,7 +22,7 @@ class CustomUserAdmin(ModelAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'email')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_verified', 'groups', 'user_permissions')}),
+        ('Permissions', {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'is_verified', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
 
@@ -89,7 +89,7 @@ class ProductImageInline(admin.TabularInline):
 
 
 class ProductAdmin(ModelAdmin):
-    list_display = ('name', 'price', 'discount', 'stock_quantity', 'slug', 'category', 'created_at')
+    list_display = ('name', 'price', 'is_featured', 'stock_quantity', 'category', 'created_at')
     search_fields = ('name', 'slug', 'barcode', 'category__name')
     list_filter = ('category', 'created_at')
 
@@ -97,7 +97,7 @@ class ProductAdmin(ModelAdmin):
 
     fieldsets = (
         (None, {
-            'fields': ('name', 'slug', 'description', 'price', 'discount', 'barcode', 'stock_quantity')
+            'fields': ('name', 'slug', 'description', 'is_featured','price', 'discount', 'barcode', 'stock_quantity')
         }),
         ('SEO', {
             'fields': ('seo_title', 'seo_description', 'seo_keywords')
