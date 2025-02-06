@@ -1,0 +1,371 @@
+{% extends 'partials/base.html' %}
+
+{% block title %}Point of Sale (POS){% endblock %}
+
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="row">
+        <!-- Product Selection Sidebar -->
+        <div class="col-xl-8 col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                    <h4 class="card-title flex-grow-1 m-0">Products</h4>
+                </div>
+        
+                <div class="card-body">
+                    <!-- Filters Section -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <select class="form-select form-select" data-choices name="categoryFilter" id="categoryFilter" >
+                                <option value="">All Categories</option>
+                                {% for category in categories %}
+                                    <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select class="form-select form-select" data-choices name="customerSelect" id="customerSelect">
+                                <option value="">Select Customer</option>
+                                {% for customer in customers %}
+                                    <option value="{{ customer.id }}">{{ customer.first_name }} {{ customer.last_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control form-control" id="productSearch" placeholder="🔍 Search for products...">
+                        </div>
+                    </div>
+        
+                    <div class="row" id="productList">
+                        {% for product in products %}
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-4 product-item" data-category="{{ product.category.id }}">
+                                <div class="card product-card border-0 shadow-sm h-100">
+                                    <div class="position-relative" style="cursor: pointer;" onclick="addToCart( {{ product.id }} , '{{ product.name }}', {{ product.price }} )">
+                                        <img src="{{ product.image.url }}" class="card-img-top img-fluid rounded-top" alt="{{ product.name }}" style="object-fit: cover;">
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <h6 class="card-title fw-bold text-truncate">{{ product.name }}</h6>
+                                        <p class="text-truncate">{{ product.category }}</p>
+                                        <div class="d-flex justify-content-between align-items-center mt-1">
+                                            <p class="card-text text-primary fw-bold mb-1">$ {{ product.price }}</p>
+                                            <span class="badge {% if product.stock_quantity > 10 %} bg-success {% elif product.stock_quantity > 0 %} bg-warning {% else %} bg-danger {% endif %}">
+                                                {{ product.stock_quantity }} left
+                                            </span>
+                                        </div>  
+        
+                                        <!-- Color Selection -->
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="d-flex">
+                                                {% for color in product.color.all %}
+                                                    <span data-color="{{ color.name|escapejs }}" onclick="addColor(this)" class="color-circle border rounded-circle me-1" 
+                                                        style="background-color: {{ color.hex_code }}; width: 18px; height: 18px; display: inline-block; cursor: pointer;">
+                                                    </span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+
+                                        <!-- Size Selection -->
+                                        <div class="d-flex align-items-center mb-2">
+                                            <select class="form-select form-select-sm" id="select_size" onclick="addSize(this)">
+                                                <option value="">Select size</option>
+                                                {% for size in product.size.all %}
+                                                    <option data-size="{{ size.name|escapejs }}" value="{{ size.name }}">{{ size.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+        
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+        
+                    <!-- Pagination Controls -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <nav>
+                                <ul class="pagination justify-content-center">
+                                    {% if products.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1" aria-label="First">«</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ products.previous_page_number }}" aria-label="Previous">‹</a>
+                                        </li>
+                                    {% endif %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">Page {{ products.number }} of {{ products.paginator.num_pages }}</span>
+                                    </li>
+                                    {% if products.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ products.next_page_number }}" aria-label="Next">›</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ products.paginator.num_pages }}" aria-label="Last">»</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+        
+                </div>
+            </div>
+        </div>
+        
+        
+        <!-- Cart Sidebar -->
+        <div class="col-xl-4 col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Shopping Cart</h4>
+                </div>
+                <div class="card-body">
+                    <div id="cartItems">
+                        <!-- Cart items will be injected here -->
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <h5>Total: $<span id="totalPrice">0.00</span></h5>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#checkoutModal">
+                            Checkout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Checkout Modal -->
+<div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="checkoutModalLabel">Checkout</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="paymentMethod" class="form-label">Payment Method</label>
+                        <select class="form-select" id="paymentMethod" name="payment_method" required>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="cash">Cash</option>
+                            <option value="paypal">PayPal</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="totalAmount" class="form-label">Total Amount</label>
+                        <input type="text" class="form-control" id="totalAmount" name="total_amount" readonly>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Confirm Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+
+var selectedColor = "";
+var selectedSize = "";
+var lastSelectedProduct = null; // Track last selected product ID
+
+// Function to handle color selection
+function addColor(element) {
+    selectedColor = element.getAttribute("data-color");
+}
+
+// Function to handle size selection
+function addSize(selectElement) {
+    selectedSize = selectElement.value;
+}
+
+// Add to Cart functionality
+const cart = [];
+
+document.querySelectorAll('.add-to-cart').forEach(button => {
+    button.addEventListener('click', function() {
+        const productId = this.dataset.id;
+        const productName = this.dataset.name;
+        const productPrice = parseFloat(this.dataset.price);
+
+        addToCart(productId, productName, productPrice);
+    });
+});
+
+// Add item to cart
+function addToCart(id, name, price) {
+
+    if (lastSelectedProduct === null) {
+        lastSelectedProduct = id;
+    }
+
+    if (lastSelectedProduct !== id){
+        selectedColor = "";
+        selectedSize = "";
+        var selectSizeElement = document.getElementById("sizeSelect");
+        if (selectSizeElement) {
+            selectSizeElement.value = ""; // Reset value
+            selectSizeElement.selectedIndex = 0; // Reset selection index
+        }
+        console.log('color reseted')
+    }
+
+    if (selectedColor === "" || selectedSize === "") {
+        alert("Please select a color and size before adding to cart.");
+        return;
+    }
+
+    const existingItem = cart.find(item => item.id === id && item.color === selectedColor && item.size === selectedSize);
+    
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({ id, name, price, color: selectedColor, size: selectedSize, quantity: 1 });
+    }
+
+    updateCart();
+
+}
+
+// Update Cart UI and total price
+function updateCart() {
+    let cartHtml = '';
+    let totalPrice = 0;
+
+    cart.forEach(item => {
+        totalPrice += item.price * item.quantity;
+        cartHtml += `
+            <div class="d-flex justify-content-between mb-2">
+                <span>${item.name} (${item.color}, ${item.size}) x ${item.quantity}</span>
+                <span>$${(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+        `;
+    });
+
+    document.getElementById('cartItems').innerHTML = cartHtml;
+    document.getElementById('totalPrice').innerText = totalPrice.toFixed(2);
+    document.getElementById('totalAmount').value = totalPrice.toFixed(2);
+}
+
+
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function filterAndSearchProducts() {
+    var selectedCategory = document.getElementById("categoryFilter").value;
+    var searchQuery = document.getElementById("productSearch").value.toLowerCase();
+    var csrfToken = getCSRFToken(); // Get CSRF token
+
+    // Perform the AJAX request
+    $.ajax({
+        url: '{% url "core:pos" %}', // Your Django view URL
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            category: selectedCategory,
+            search: searchQuery,
+            csrfmiddlewaretoken: csrfToken // Include CSRF token
+        },
+        success: function(response) {
+            // Update the product list
+            updateProductList(response.products);
+            updatePagination(response);
+        }
+    });
+}
+
+function updateProductList(products) {
+    var productListDiv = document.getElementById("productList");
+    productListDiv.innerHTML = '';  // Clear the current list
+
+    // Loop through the products and display them
+    products.forEach(function(product) {
+        var productItem = `
+            <div class="col-xl-3 col-md-4 col-sm-6 mb-4 product-item" data-category="${product.category}">
+                <div class="card product-card border-0 shadow-sm h-100" style="cursor: pointer;" 
+                     onclick="addToCart(${product.id}, '${product.name}', ${product.price}, getSelectedCustomer())">
+                    <div class="position-relative">
+                        <img src="${product.image_url}" class="card-img-top img-fluid rounded-top" alt="${product.name}" style="object-fit: cover;">
+                    </div>
+                    <div class="card-body p-3">
+                        <h6 class="card-title fw-bold text-truncate">${product.name}</h6>
+                        <p class="text-truncate">${product.category}</p>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <p class="card-text text-primary fw-bold mb-1">$ ${product.price}</p>
+                            <span class="badge ${product.stock_quantity > 10 ? 'bg-success' : (product.stock_quantity > 0 ? 'bg-warning' : 'bg-danger')}">
+                                ${product.stock_quantity} left
+                            </span>
+                        </div>  
+                        <!-- Color Selection -->
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="d-flex">
+                                ${product.colors.map(color => `
+                                    <span class="color-circle border rounded-circle me-1" 
+                                        style="background-color: ${color}; width: 18px; height: 18px; display: inline-block;">
+                                    </span>`).join('')}
+                            </div>
+                        </div>
+                        <!-- Size Selection -->
+                        <div class="d-flex align-items-center mb-2">
+                            <select class="form-select form-select-sm">
+                                <option value="">Select size</option>
+                                ${product.sizes.map(size => `<option value="${size}">${size}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        productListDiv.innerHTML += productItem;
+    });
+}
+
+function updatePagination(response) {
+    var paginationDiv = document.querySelector('.pagination');
+    paginationDiv.innerHTML = '';
+
+    if (response.has_previous) {
+        paginationDiv.innerHTML += `
+            <li class="page-item"><a class="page-link" href="?page=1" aria-label="First">«</a></li>
+            <li class="page-item"><a class="page-link" href="?page=${response.previous_page_number}" aria-label="Previous">‹</a></li>
+        `;
+    }
+
+    paginationDiv.innerHTML += `
+        <li class="page-item disabled">
+            <span class="page-link">Page ${response.current_page} of ${response.num_pages}</span>
+        </li>
+    `;
+
+    if (response.has_next) {
+        paginationDiv.innerHTML += `
+            <li class="page-item"><a class="page-link" href="?page=${response.next_page_number}" aria-label="Next">›</a></li>
+            <li class="page-item"><a class="page-link" href="?page=${response.num_pages}" aria-label="Last">»</a></li>
+        `;
+    }
+}
+
+// Attach event listeners for filtering and searching
+document.getElementById("categoryFilter").addEventListener('change', filterAndSearchProducts);
+document.getElementById("productSearch").addEventListener('keyup', filterAndSearchProducts);
+
+
+</script>
+
+{% endblock %}

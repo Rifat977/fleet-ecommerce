@@ -8,7 +8,7 @@ def role_required(required_role):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
             if not request.user.is_authenticated:
-                return redirect('login')  # Redirect to login if the user is not authenticated
+                return redirect('core:login')  # Redirect to login if the user is not authenticated
             if request.user.role != required_role:
                 return HttpResponseForbidden("You do not have permission to access this page.")
             return view_func(request, *args, **kwargs)
