@@ -15,11 +15,11 @@ function addSize(selectElement) {
 }
 
 // Add item to cart
-function addToCart(id, name, price) {
+function addToCart(id, name, price, sku) {
 
     if (lastSelectedProduct === null) {
         lastSelectedProduct = id;
-    }
+    } 
 
     if (lastSelectedProduct !== id){
         selectedColor = "";
@@ -42,7 +42,7 @@ function addToCart(id, name, price) {
     if (existingItem) {
         existingItem.quantity += 1;
     } else {
-        cart.push({ id, name, price, color: selectedColor, size: selectedSize, quantity: 1 });
+        cart.push({ id, name, price, color: selectedColor, size: selectedSize, quantity: 1, sku });
     }
 
     // Save updated cart to localStorage
@@ -73,30 +73,36 @@ function updateCart() {
     totalPrice += item.price * item.quantity;
     cartHtml += `
         <div class="cart-item d-flex justify-content-between align-items-center mb-1 p-2 rounded-lg shadow-sm bg-white">
-
             <!-- Item Details -->
-            <div class="item-details w-50 pe-3">
-                <div><strong class="fs-5 text-dark">${item.name}</strong></div>
-                <div class="text-muted">Color: <span class="text-primary">${item.color}</span></div>
-                <div class="text-muted">Size: <span class="text-primary">${item.size}</span></div>
+            <div class="item-details w-3/12 pe-3">
+                <div><strong class="fs-7 text-dark">${item.name}</strong></div>
+                <div class="text-muted">C: <span class="text-primary">${item.color}</span></div>
+                <div class="text-muted">S: <span class="text-primary">${item.size}</span> SKU: <span class="text-primary">${item.sku}</span></div>
             </div>
 
-            <!-- Item Image and Quantity -->
-            <div class="item-quantity d-flex align-items-center justify-content-center w-30">
-                <button class="btn btn-sm btn-outline-primary" onclick="updateQuantity(${index}, -1)">
-                    <i class="fa fa-minus"></i>
-                </button>
-                <input type="number" value="${item.quantity}" min="1" class="custom-quantity-input mx-2 text-center" onchange="updateQuantity(${index}, 0, this.value)" 
-                    style="width: 60px; height: 35px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; padding: 5px; background-color: #f8f9fa; transition: border-color 0.3s ease;" />
-                <button class="btn btn-sm btn-outline-primary" onclick="updateQuantity(${index}, 1)">
-                    <i class="fa fa-plus"></i>
-                </button>
+            <!-- Price Column -->
+            <div class="item-price text-center w-2/12">
+                <div class="fw-bold fs-7 text-dark">$ ${item.price.toFixed(2)}</div>
             </div>
 
-            <!-- Price and Delete Button -->
-            <div class="item-price text-end w-20 ps-3">
-                <div class="fw-bold fs-5 text-dark">$${(item.price * item.quantity).toFixed(2)}</div>
-                <button class="btn btn-sm btn-danger ms-2 mt-1" onclick="removeItem(${index})">
+            <!-- Multiplication Symbol -->
+            <div class="item-multiply text-center w-1/12">
+                <div class="fs-7 text-dark">×</div>
+            </div>
+
+            <!-- Item Quantity -->
+            <div class="item-quantity d-flex align-items-center justify-content-center w-3/12">
+                <input type="number" value="${item.quantity}" min="1" class="custom-quantity-input mx-2 text-center h-8 text-sm border border-gray-300 rounded-md p-1 bg-gray-50 focus:ring-2 focus:ring-blue-500 transition-all" onchange="updateQuantity(${index}, 0, this.value)" style="width: 3rem;" />
+            </div>
+
+            <!-- Subtotal Column -->
+            <div class="item-subtotal text-center w-2/12">
+                <div class="fw-bold fs-7 text-dark">$ ${(item.price * item.quantity).toFixed(2)}</div>
+            </div>
+
+            <!-- Delete Button Column -->
+            <div class="item-delete text-end w-1/12 ps-3">
+                <button class="btn btn-xs btn-danger ms-2 mt-1" onclick="removeItem(${index})">
                     <i class="fa fa-trash"></i> <!-- Font Awesome Trash Icon -->
                 </button>
             </div>

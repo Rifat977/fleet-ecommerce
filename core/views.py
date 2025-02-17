@@ -50,10 +50,14 @@ def pos(request):
 
         if category_filter:
             products = products.filter(category__id=category_filter)
-        if customer_filter:
-            products = products.filter(customer__id=customer_filter)
+        # if customer_filter:
+        #     products = products.filter(customer__id=customer_filter)
+        # if search_query:
+        #     products = products.filter(name__icontains=search_query)
+
         if search_query:
-            products = products.filter(name__icontains=search_query)
+            products = products.filter(models.Q(name__icontains=search_query) | models.Q(sku__icontains=search_query))
+
 
         # Paginate filtered products (12 per page)
         paginator = Paginator(products, 20)
@@ -71,7 +75,8 @@ def pos(request):
                 'stock_quantity': product.stock_quantity,
                 'image_url': product.image.url,
                 'colors': [color.hex_code for color in product.color.all()],
-                'sizes': [size.name for size in product.size.all()]
+                'sizes': [size.name for size in product.size.all()],
+                'sku'  : product.sku
             })
 
         # Return the filtered products and pagination data in JSON format
@@ -86,7 +91,7 @@ def pos(request):
         })
 
     # Default rendering (no AJAX request)
-    products = Product.objects.all()
+    products = Product.objects.all().order_by('-id')
     paginator = Paginator(products, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)

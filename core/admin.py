@@ -89,26 +89,30 @@ class ProductImageInline(admin.TabularInline):
 
 
 class ProductAdmin(ModelAdmin):
-    list_display = ('name', 'price', 'is_featured', 'stock_quantity', 'category', 'created_at')
-    search_fields = ('name', 'slug', 'barcode', 'category__name')
+    list_display = ('name', 'price', 'sku', 'is_featured', 'stock_quantity', 'category', 'created_at')
+    search_fields = ('name', 'sku', 'barcode', 'category__name')
     list_filter = ('category', 'created_at')
 
     inlines = [ProductImageInline]
 
-    fieldsets = (
-        (None, {
-            'fields': ('name', 'slug', 'description', 'is_featured','price', 'discount', 'barcode', 'stock_quantity')
-        }),
-        ('SEO', {
-            'fields': ('seo_title', 'seo_description', 'seo_keywords')
-        }),
-        ('Relations', {
-            'fields': ('category', 'tags', 'color', 'size')
-        }),
-        ('Media', {
-            'fields': ('image',)
-        }),
-    )
+    def get_fieldsets(self, request, obj=None):
+        """ Exclude 'barcode' and 'sku' fields when adding a new product. """
+        if obj is None:  # If adding a new product
+            return (
+                (None, {
+                    'fields': ('name', 'slug', 'description', 'is_featured', 'price', 'discount', 'stock_quantity')
+                }),
+                ('SEO', {
+                    'fields': ('seo_title', 'seo_description', 'seo_keywords')
+                }),
+                ('Relations', {
+                    'fields': ('category', 'tags', 'color', 'size')
+                }),
+                ('Media', {
+                    'fields': ('image',)
+                }),
+            )
+        return super().get_fieldsets(request, obj)  # Show all fields when editing
 
     formfield_overrides = {
         models.TextField: {'widget': WysiwygWidget},  

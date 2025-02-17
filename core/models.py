@@ -1,5 +1,12 @@
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
+from django.utils.text import slugify
+import random, string
+
+import barcode
+from barcode.writer import ImageWriter
+from django.core.files.base import ContentFile
+from io import BytesIO
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -64,7 +71,7 @@ class CustomerProfile(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, blank=True, null=True)
     logo = models.ImageField(upload_to="category/image", blank=True, null=True)
     parent = models.ForeignKey(
         'self', on_delete=models.CASCADE, null=True, blank=True, related_name="subcategories"
@@ -74,6 +81,11 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
     class Meta:
         verbose_name = "Category"
         verbose_name_plural = "             Categories"
@@ -81,10 +93,15 @@ class Category(models.Model):
 
 class Tag(models.Model):
     name = models.CharField(max_length=100)
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, blank=True, null=True)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Tag"
@@ -119,7 +136,7 @@ class Color(models.Model):
 class Product(models.Model):
     # Basic product details
     name = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, blank=True, null=True)
     description = models.TextField()
     is_featured = models.BooleanField(default=False)
     
@@ -128,7 +145,7 @@ class Product(models.Model):
     discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Discount in percentage
     
     # Barcode and stock
-    barcode = models.CharField(max_length=100, unique=True)
+    barcode = models.ImageField(upload_to="products/barcodes", blank=True, null=True)  # Barcode as image
     stock_quantity = models.PositiveIntegerField()
 
     # Product attributes
@@ -144,6 +161,9 @@ class Product(models.Model):
 
     # Media
     image = models.ImageField(upload_to="products/images", blank=True, null=True)
+
+    sku = models.CharField(max_length=8, unique=True, blank=True, null=True)
+
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -163,6 +183,40 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        """ Ensure SKU and barcode are generated correctly before saving. """
+        if not self.slug:
+            self.slug = slugify(self.name)
+
+        if not self.sku:
+            self.sku = self.generate_unique_sku()
+
+        super().save(*args, **kwargs)  # First, save the object to ensure `self.id` exists.
+
+        if not self.barcode:  # Generate barcode only if it doesn't exist
+            self.generate_barcode()
+
+    def generate_unique_sku(self):
+        """ Generate a unique SKU with 8 uppercase letters and numbers. """
+        while True:
+            sku = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            if not Product.objects.filter(sku=sku).exists():
+                return sku
+
+    def generate_barcode(self):
+        """ Generate a barcode image for the SKU and save it to the barcode field. """
+        if self.sku:
+            code128 = barcode.get_barcode_class('code128')
+            barcode_obj = code128(self.sku, writer=ImageWriter())
+
+            buffer = BytesIO()
+            barcode_obj.write(buffer)
+            filename = f"barcode_{self.sku}.png"
+
+            # Save barcode image and update the field without infinite recursion
+            self.barcode.save(filename, ContentFile(buffer.getvalue()), save=False)
+            super().save(update_fields=['barcode'])
 
     class Meta:
         verbose_name = "Product"
