@@ -161,18 +161,20 @@ class InvoiceAdmin(ModelAdmin):
     list_display = ("invoice_number", "order", "issued_date", "due_date")
     search_fields = ("invoice_number", "order__user__username")
 
-@admin.register(POS)
-class POSAdmin(ModelAdmin):
-    list_display = ("user", "sale_date", "total_amount", "discount", "tax", "net_total", "payment_method")
-    list_filter = ("payment_method", "sale_date")
-    search_fields = ("user__username",)
-
-@admin.register(POSItem)
-class POSItemAdmin(ModelAdmin):
-    list_display = ("pos", "product", "quantity", "sale_price", "discount", "total_price")
-    search_fields = ("pos__user__username", "product__name")
-
 @admin.register(ProductAnalytics)
 class ProductAnalyticsAdmin(ModelAdmin):
     list_display = ("product", "views", "purchases")
     search_fields = ("product__name",)
+
+
+@admin.register(Cupon)
+class CuponAdmin(ModelAdmin):
+    list_display = ("code", "discount", "is_active", "created_at", "updated_at")
+    search_fields = ("code",)
+
+@admin.register(CuponApplied)
+class CuponAppliedAdmin(ModelAdmin):
+    list_display = ("user", "cupon", "created_at")
+    search_fields = ("user__username", "cupon__code")
+
+

@@ -136,3 +136,9 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ["id", "name", "slug", "logo", "parent", "description"]
+
+
+class CuponAppliedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CuponApplied
+        fields = "__all__"

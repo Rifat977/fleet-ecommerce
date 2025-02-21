@@ -115,8 +115,12 @@ function updateCart() {
     
 
     document.getElementById('cartItems').innerHTML = cartHtml;
-    document.getElementById('totalPrice').innerText = totalPrice.toFixed(2);
-    document.getElementById('totalAmount').value = totalPrice.toFixed(2);
+    document.getElementById('subtotal').innerText = totalPrice.toFixed(2);
+    var taxAmount = (totalPrice * TAX_RATE) / 100;
+    document.getElementById('taxAmount').innerText = taxAmount.toFixed(2);
+    const finalTotal = totalPrice + taxAmount;
+    document.getElementById('totalPrice').innerText = finalTotal.toFixed(2);
+    document.getElementById('totalAmount').value = finalTotal.toFixed(2);  // Add this line // Add this line
 }
 
 // Update quantity (minus, plus, or manual input change)
@@ -142,19 +146,10 @@ function removeItem(index) {
     updateCart();
 }
 
-document.getElementById('applyPromoCode').addEventListener('click', function() {
-    const promoCode = document.getElementById('promoCode').value;
-    const promoMessage = document.getElementById('promoMessage');
-    
-    if (promoCode === 'DISCOUNT10') {
-        promoMessage.style.display = 'block';
-        promoMessage.innerText = 'Promo code applied successfully! You get 10% off.';
-    } else {
-        promoMessage.style.display = 'none';
-        alert('Invalid promo code.');
-    }
-});
 
+function checkout(){
+    console.log(cart);
+}
 
 // Initial cart update
 updateCart();

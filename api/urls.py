@@ -13,5 +13,7 @@ urlpatterns = [
     path('products/<int:id>/', ProductDetailView.as_view(), name='product-detail'),
 
     path('category/', CategoryListView.as_view(), name='category-list'),
+
+    path('apply-cupon/', apply_cupon, name='apply-cupon'),
 ]
 

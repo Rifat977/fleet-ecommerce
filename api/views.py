@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import *
-from core.models import Product
+from core.models import Product, Cupon, CuponApplied
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -13,6 +13,10 @@ from rest_framework import generics, filters, pagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import ProductFilter
 from rest_framework.generics import RetrieveAPIView
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+
 
 
 User = get_user_model()
@@ -25,7 +29,7 @@ def register_user(request):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -146,3 +150,38 @@ class ProductDetailView(RetrieveAPIView):
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+
+
+
+def apply_cupon(request):
+    if request.method == 'POST':
+        try:
+            cupon_code = request.POST.get("cupon_code")
+            total_amount = request.POST.get("total_amount")
+            customer = request.POST.get("customer")
+            customer = User.objects.get(id=customer) if customer else None
+            total_amount = float(total_amount)
+
+            cupon = Cupon.objects.get(code=cupon_code, is_active=True)
+
+            if total_amount < cupon.min_order_amount:
+                return JsonResponse({"error": f"Total amount is less than the minimum order amount: {cupon.min_order_amount}"}, status=status.HTTP_400_BAD_REQUEST)
+            if cupon.max_usage <= CuponApplied.objects.filter(cupon=cupon, user=customer).count():
+                return JsonResponse({"error": f"You have reached the maximum usage limit for this coupon"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            new_total_amount = total_amount - (total_amount * cupon.discount / 100)
+
+            # CuponApplied.objects.create(
+            #     cupon=cupon,
+            #     user=customer,
+            # )
+            
+            return JsonResponse({"message": "Cupon applied successfully", "total_amount": new_total_amount}, status=status.HTTP_200_OK)
+        except Cupon.DoesNotExist:
+            return JsonResponse({"error": "Invalid coupon code"}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "Customer not found"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        return JsonResponse({"error": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED) 

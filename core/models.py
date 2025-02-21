@@ -8,7 +8,7 @@ from barcode.writer import ImageWriter
 from django.core.files.base import ContentFile
 from io import BytesIO
 
-class User(AbstractUser):
+class User(AbstractUser): 
     ROLE_CHOICES = (
         ('admin', 'Admin'),
         ('sales_rep', 'Sales Representative'),
@@ -45,29 +45,57 @@ class User(AbstractUser):
 
     class Meta:
         verbose_name = "User"
-        verbose_name_plural = "                  All Users"
-
+        verbose_name_plural = "                    All Users"
 
 class AdminProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
 
     class Meta:
         verbose_name = "Admins"
-        verbose_name_plural = "                 Admins"
+        verbose_name_plural = "                   Admins"
 
 class SalesRepresentativeProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='sales_rep_profile')
 
     class Meta:
         verbose_name = "Sales Representives"
-        verbose_name_plural = "                Sales Representives"
+        verbose_name_plural = "                  Sales Representives"
 
 class CustomerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='customer_profile')
 
     class Meta:
         verbose_name = "Customers"
-        verbose_name_plural = "               Customers"
+        verbose_name_plural = "                 Customers"
+
+class Cupon(models.Model):
+    code = models.CharField(max_length=255, unique=True)
+    discount = models.IntegerField(default=0)
+    min_order_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    max_usage = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.code
+    
+    class Meta:
+        verbose_name = "Cupon"
+        verbose_name_plural = "                Coupons"
+
+class CuponApplied(models.Model):
+    cupon = models.ForeignKey(Cupon, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.cupon.code}"
+    
+    class Meta:
+        verbose_name = "Cupon Applied"
+        verbose_name_plural = "               Coupons Applied"
+
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
@@ -352,59 +380,3 @@ class ProductAnalytics(models.Model):
     class Meta:
         verbose_name = "Product Analytics"
         verbose_name_plural = "  Product Analytics"
-
-
-class POS(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="pos")
-    sale_date = models.DateTimeField(auto_now_add=True)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Discount percentage on total sale
-    tax = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Tax percentage
-    payment_method = models.CharField(
-        max_length=50,
-        choices=[
-            ("cash", "Cash"),
-            ("credit_card", "Credit Card"),
-            ("debit_card", "Debit Card"),
-            ("online", "Online Payment"),
-        ],
-        default="cash",
-    )
-    notes = models.TextField(blank=True, null=True)  # Additional notes about the sale
-
-    @property
-    def net_total(self):
-        """Calculate the total after applying discount and adding tax."""
-        discount_amount = (self.total_amount * self.discount) / 100
-        taxable_amount = self.total_amount - discount_amount
-        tax_amount = (taxable_amount * self.tax) / 100
-        return taxable_amount + tax_amount
-
-    def __str__(self):
-        return f"POS Sale - {self.id} by {self.user.username}"
-
-    class Meta:
-        verbose_name = "POS Sale"
-        verbose_name_plural = " POS Sales"
-
-
-class POSItem(models.Model):
-    pos = models.ForeignKey(POS, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField()
-    sale_price = models.DecimalField(max_digits=10, decimal_places=2)  # Price per unit
-    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Discount on item in percentage
-    total_price = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
-
-    def save(self, *args, **kwargs):
-        """Calculate the total price for the item after discount."""
-        discount_amount = (self.sale_price * self.discount) / 100
-        self.total_price = (self.sale_price - discount_amount) * self.quantity
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.quantity} x {self.product.name} for POS {self.pos.id}"
-
-    class Meta:
-        verbose_name = "POS Item"
-        verbose_name_plural = "POS Items"

@@ -36,8 +36,7 @@
 }
 
 /* Cart summary styles */
-#totalPrice {
-    font-size: 1.25rem;
+#totalPrice, #subtotal, #tax {
     font-weight: bold;
 }
 
