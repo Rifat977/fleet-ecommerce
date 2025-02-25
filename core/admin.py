@@ -11,6 +11,10 @@ from django.contrib.auth.admin import UserAdmin
 from .models import *
 import json
 
+from django.utils.html import format_html
+from django import forms
+
+
 
 @admin.register(User)
 class CustomUserAdmin(ModelAdmin):
@@ -81,11 +85,38 @@ class ColorAdmin(ModelAdmin):
 #     list_display = ("product", "name", "value")
 #     search_fields = ("product__name", "name", "value")
 
+class ProductImageForm(forms.ModelForm):
+    class Meta:
+        model = ProductImage
+        fields = '__all__'
+        widgets = {
+            'stock': forms.NumberInput(attrs={
+                'style': 'color: black; width: 70px; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'
+            })
+        }
+    
+    def clean_color(self):
+        color = self.cleaned_data.get('color')
+        if not color:
+            raise forms.ValidationError("This field is required.")
+        return color
+
+
 # Inline admin for ProductImage
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1  
-    fields = ('image', 'alt_text') 
+    form = ProductImageForm
+    fields = ('image', 'image_preview', 'color', 'stock',)  
+    readonly_fields = ('image_preview',) 
+    
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" width="50" height="50" style="object-fit: cover; border-radius: 5px;"/>', obj.image.url)
+        return "No Image"
+
+    image_preview.short_description = "Preview"
 
 
 class ProductAdmin(ModelAdmin):
@@ -100,13 +131,13 @@ class ProductAdmin(ModelAdmin):
         if obj is None:  # If adding a new product
             return (
                 (None, {
-                    'fields': ('name', 'slug', 'description', 'is_featured', 'price', 'discount', 'stock_quantity')
+                    'fields': ('name', 'slug', 'description', 'is_featured', 'price', 'discount')
                 }),
                 ('SEO', {
                     'fields': ('seo_title', 'seo_description', 'seo_keywords')
                 }),
                 ('Relations', {
-                    'fields': ('category', 'tags', 'color', 'size')
+                    'fields': ('category', 'tags', 'size')
                 }),
                 ('Media', {
                     'fields': ('image',)
@@ -120,7 +151,7 @@ class ProductAdmin(ModelAdmin):
     }
 
 admin.site.register(Product, ProductAdmin)
-admin.site.register(ProductImage)
+# admin.site.register(ProductImage)
 
 
 # @admin.register(ProductImage)

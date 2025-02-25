@@ -8,6 +8,8 @@ from barcode.writer import ImageWriter
 from django.core.files.base import ContentFile
 from io import BytesIO
 
+from django.db.models import Sum
+
 class User(AbstractUser): 
     ROLE_CHOICES = (
         ('admin', 'Admin'),
@@ -177,7 +179,6 @@ class Product(models.Model):
     stock_quantity = models.PositiveIntegerField()
 
     # Product attributes
-    color = models.ManyToManyField(Color, blank=True)
     size = models.ManyToManyField(Size, blank=True)
     seo_title = models.CharField(max_length=255, blank=True, null=True)
     seo_description = models.TextField(blank=True, null=True)
@@ -246,6 +247,12 @@ class Product(models.Model):
             self.barcode.save(filename, ContentFile(buffer.getvalue()), save=False)
             super().save(update_fields=['barcode'])
 
+    def update_stock_quantity(self):
+        total_stock = self.gallery.aggregate(total=Sum('stock'))['total'] or 0
+        self.stock_quantity = total_stock
+        self.save(update_fields=['stock_quantity'])
+
+
     class Meta:
         verbose_name = "Product"
         verbose_name_plural = "          Products"
@@ -253,7 +260,9 @@ class Product(models.Model):
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="gallery")
+    color = models.ForeignKey(Color, on_delete=models.SET_NULL, null=True, blank=True, related_name="images")  
     image = models.ImageField(upload_to="products/gallery")
+    stock = models.PositiveIntegerField(default=0)
     alt_text = models.CharField(max_length=255, blank=True, null=True)  # For SEO purposes
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -380,3 +389,22 @@ class ProductAnalytics(models.Model):
     class Meta:
         verbose_name = "Product Analytics"
         verbose_name_plural = "  Product Analytics"
+
+
+
+
+
+
+
+
+
+
+
+
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+@receiver(post_save, sender=ProductImage)
+@receiver(post_delete, sender=ProductImage)
+def update_product_stock(sender, instance, **kwargs):
+    instance.product.update_stock_quantity()

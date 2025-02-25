@@ -1,5 +1,6 @@
 from django.db import models
 from core.models import *
+import random
 
 # Create your models here.
 PAYMENT_METHOD = [
@@ -10,17 +11,24 @@ PAYMENT_METHOD = [
 ]
 
 class POS(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="pos")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="pos", null=True, blank=True)
     sale_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    due_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Discount percentage on total sale
     tax = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Tax percentage
+    invoice_number = models.CharField(max_length=50, null=True, blank=True, unique=True)
     payment_method = models.CharField(
         max_length=50,
         choices=PAYMENT_METHOD,
         default="cash",
     )
     notes = models.TextField(blank=True, null=True)  # Additional notes about the sale
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_number:
+            self.invoice_number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        super().save(*args, **kwargs)
 
     @property
     def net_total(self):
@@ -31,7 +39,7 @@ class POS(models.Model):
         return taxable_amount + tax_amount
 
     def __str__(self):
-        return f"POS Sale - {self.id} by {self.user.username}"
+        return f"POS Sale - {self.id}"
 
     class Meta:
         verbose_name = "POS Sale"
@@ -45,6 +53,8 @@ class POSItem(models.Model):
     sale_price = models.DecimalField(max_digits=10, decimal_places=2)  # Price per unit
     discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Discount on item in percentage
     total_price = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    color = models.ForeignKey(Color, on_delete=models.CASCADE, null=True, blank=True)
+    size = models.ForeignKey(Size, on_delete=models.CASCADE, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         """Calculate the total price for the item after discount."""

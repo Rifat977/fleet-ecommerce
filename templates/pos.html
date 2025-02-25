@@ -35,6 +35,9 @@
                             </select>
                         </div>
                         <div class="col-md-4">
+                            <input type="text" class="form-control form-control" id="productSearch" placeholder="🔍 Search for products...">
+                        </div>
+                        <div class="col-md-4">
                             <select class="form-select form-select" data-choices name="customerSelect" id="customerSelect">
                                 <option value="">Walk In Customer</option>
                                 {% for customer in customers %}
@@ -42,17 +45,14 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <input type="text" class="form-control form-control" id="productSearch" placeholder="🔍 Search for products...">
-                        </div>
                     </div>
         
                     <div class="row" id="productList">
                         {% for product in products %}
                             <div class="col-xl-3 col-md-4 col-sm-6 mb-4 product-item" data-category="{{ product.category.id }}">
                                 <div class="card product-card border-0 shadow-sm h-100">
-                                    <div class="position-relative" style="cursor: pointer;" onclick="addToCart( {{ product.id }} , '{{ product.name }}', {{ product.price }}, '{{ product.sku }}' )">
-                                        <img src="{{ product.image.url }}" class="card-img-top img-fluid rounded-top" alt="{{ product.name }}" style="object-fit: cover;">
+                                    <div class="position-relative" style="cursor: pointer;" onclick="addToCart( {{ product.id }} , '{{ product.name }}', {{ product.price }}, '{{ product.sku }}', {{ product.stock_quantity }} )">
+                                        <img id="product-image-{{ product.id }}" src="{{ product.image.url }}" class="card-img-top img-fluid rounded-top" alt="{{ product.name }}" style="object-fit: cover;">
                                     </div>
                                     <div class="card-body p-3">
                                         <h6 class="card-title fw-bold text-truncate">{{ product.name }}</h6>
@@ -67,9 +67,18 @@
                                         <!-- Color Selection -->
                                         <div class="d-flex align-items-center mb-2">
                                             <div class="d-flex">
-                                                {% for color in product.color.all %}
-                                                    <span data-color="{{ color.name|escapejs }}" onclick="addColor(this)" class="color-circle border rounded-circle me-1" 
-                                                        style="background-color: {{ color.hex_code }}; width: 18px; height: 18px; display: inline-block; cursor: pointer;">
+                                                <span data-color="" 
+                                                    data-image-url="{{ product.image.url }}" 
+                                                    data-product-id="{{ product.id }}" 
+                                                    onclick="addColor(this)" 
+                                                    class="color-circle border rounded-circle me-1" 
+                                                    style="background-color: transparent; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+                                                    -
+                                                </span>
+
+                                                {% for color in product.colors %}
+                                                    <span data-color="{{ color.color_hex }}" data-image-url="{{ color.image_url }}" data-product-id="{{ product.id }}"  onclick="addColor(this)" class="color-circle border rounded-circle me-1" 
+                                                        style="background-color: {{ color.color_hex }}; width: 18px; height: 18px; display: inline-block; cursor: pointer;">
                                                     </span>
                                                 {% endfor %}
                                             </div>
@@ -79,8 +88,8 @@
                                         <div class="d-flex align-items-center mb-2">
                                             <select class="form-select form-select-sm" id="select_size" onclick="addSize(this)">
                                                 <option value="">Select size</option>
-                                                {% for size in product.size.all %}
-                                                    <option data-size="{{ size.name|escapejs }}" value="{{ size.name }}">{{ size.name }}</option>
+                                                {% for size in product.sizes %}
+                                                    <option data-size="{{ size }}" value="{{ size }}">{{ size }}</option>
                                                 {% endfor %}
                                             </select>
                                         </div>
@@ -97,23 +106,23 @@
                         <div class="col-md-12">
                             <nav>
                                 <ul class="pagination justify-content-center">
-                                    {% if products.has_previous %}
+                                    {% if page_obj.has_previous %}
                                         <li class="page-item">
                                             <a class="page-link" href="?page=1" aria-label="First">«</a>
                                         </li>
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ products.previous_page_number }}" aria-label="Previous">‹</a>
+                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">‹</a>
                                         </li>
                                     {% endif %}
                                     <li class="page-item disabled">
-                                        <span class="page-link">Page {{ products.number }} of {{ products.paginator.num_pages }}</span>
+                                        <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
                                     </li>
-                                    {% if products.has_next %}
+                                    {% if page_obj.has_next %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ products.next_page_number }}" aria-label="Next">›</a>
+                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">›</a>
                                         </li>
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ products.paginator.num_pages }}" aria-label="Last">»</a>
+                                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">»</a>
                                         </li>
                                     {% endif %}
                                 </ul>
@@ -219,6 +228,12 @@
                         <label for="changes" class="form-label fw-bold text-success">Change (If Overpaid)</label>
                         <input type="number" class="form-control bg-light text-success fw-bold" id="changes" name="changes" readonly>
                     </div>
+
+                    <div class="mb-3">
+                        <label for="note" class="form-label">Note (Optional)</label>
+                        <textarea class="form-control" id="note" name="note" rows="2" placeholder="Add any additional details here..."></textarea>
+                    </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -322,10 +337,9 @@ function updateProductList(products) {
     products.forEach(function(product) {
         var productItem = `
             <div class="col-xl-3 col-md-4 col-sm-6 mb-4 product-item" data-category="${product.category}">
-                <div class="card product-card border-0 shadow-sm h-100" style="cursor: pointer;" 
-                     onclick="addToCart(${product.id}, '${product.name}', ${product.price}, '${product.sku}' )">
+                <div class="card product-card border-0 shadow-sm h-100" style="cursor: pointer;" >
                     <div class="position-relative">
-                        <img src="${product.image_url}" class="card-img-top img-fluid rounded-top" alt="${product.name}" style="object-fit: cover;">
+                        <img src="${product.image_url}" onclick="addToCart(${product.id}, '${product.name}', ${product.price}, '${product.sku}', ${product.stock_quantity} )" class="card-img-top img-fluid rounded-top" alt="${product.name}" style="object-fit: cover;">
                     </div>
                     <div class="card-body p-3">
                         <h6 class="card-title fw-bold text-truncate">${product.name}</h6>
@@ -336,18 +350,30 @@ function updateProductList(products) {
                                 ${product.stock_quantity} left
                             </span>
                         </div>  
+
                         <!-- Color Selection -->
                         <div class="d-flex align-items-center mb-2">
                             <div class="d-flex">
+                                <span data-color="" 
+                                    data-image-url="${product.image}" 
+                                    data-product-id="${ product.id }" 
+                                    onclick="addColor(this)" 
+                                    class="color-circle border rounded-circle me-1" 
+                                    style="background-color: transparent; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+                                    -
+                                </span>
+
                                 ${product.colors.map(color => `
-                                    <span class="color-circle border rounded-circle me-1" 
-                                        style="background-color: ${color}; width: 18px; height: 18px; display: inline-block;">
-                                    </span>`).join('')}
+                                    <span data-color="${color.color_hex}" data-image-url="${color.image_url}" data-product-id="${product.id}"  onclick="addColor(this)" class="color-circle border rounded-circle me-1" 
+                                        style="background-color: ${color.color_hex}; width: 18px; height: 18px; display: inline-block; cursor: pointer;">
+                                    </span>
+                                `).join('')}
                             </div>
                         </div>
+
                         <!-- Size Selection -->
                         <div class="d-flex align-items-center mb-2">
-                            <select class="form-select form-select-sm">
+                            <select class="form-select form-select-sm" id="select_size" onclick="addSize(this)">
                                 <option value="">Select size</option>
                                 ${product.sizes.map(size => `<option value="${size}">${size}</option>`).join('')}
                             </select>

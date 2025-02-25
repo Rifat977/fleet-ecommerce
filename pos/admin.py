@@ -12,11 +12,11 @@ import json
 # Register your models here.
 @admin.register(POS)
 class POSAdmin(ModelAdmin):
-    list_display = ("user", "sale_date", "total_amount", "discount", "tax", "net_total", "payment_method")
+    list_display = ("sale_date", "total_amount", "due_amount", "tax", "net_total")
     list_filter = ("payment_method", "sale_date")
-    search_fields = ("user__username",)
+    search_fields = ("sale_date",)
 
 @admin.register(POSItem)
 class POSItemAdmin(ModelAdmin):
     list_display = ("pos", "product", "quantity", "sale_price", "discount", "total_price")
-    search_fields = ("pos__user__username", "product__name")
+    search_fields = ("product__name",)
