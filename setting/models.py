@@ -3,7 +3,8 @@ from django.db import models
 # Create your models here.
 class CompanySetting(models.Model):
     name = models.CharField(max_length=255, blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
+    address_line_1 = models.TextField(blank=True, null=True)
+    address_line_2 = models.TextField(blank=True, null=True)
     phone = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     logo = models.ImageField(upload_to="company/logo", blank=True, null=True)

@@ -287,7 +287,7 @@ def checkout(request):
                 except ObjectDoesNotExist:
                     return JsonResponse({"valid": False, "error": "Product or color not found."}, status=400)
 
-        return JsonResponse({"valid": True})
+        return JsonResponse({"valid": True, "pos_id": pos.id})
 
     except json.JSONDecodeError:
         return JsonResponse({"valid": False, "error": "Invalid JSON format."}, status=400)
@@ -301,9 +301,10 @@ def invoice(request, pos_id):
     # handle error for pos_id not found 
     try:
         pos = POS.objects.get(id=pos_id)
+        company_setting = CompanySetting.objects.first()
     except ObjectDoesNotExist:
         return render(request, '404.html')
-    return render(request, 'invoice.html', {"pos": pos})
+    return render(request, 'invoice.html', {"pos": pos, "company": company_setting})
 
 def page_404(request):
     return render(request, '404.html')

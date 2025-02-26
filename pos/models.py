@@ -10,6 +10,13 @@ PAYMENT_METHOD = [
     ("online", "Online Payment"),
 ]
 
+STATUS = [
+    ("pending", "Pending"),
+    ("paid", "Paid"),
+    ("cancelled", "Cancelled"),
+    ("due", "Due"),
+]
+
 class POS(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="pos", null=True, blank=True)
     sale_date = models.DateTimeField(auto_now_add=True)
@@ -24,8 +31,15 @@ class POS(models.Model):
         default="cash",
     )
     notes = models.TextField(blank=True, null=True)  # Additional notes about the sale
+    status = models.CharField(max_length=50, choices=STATUS, default="pending")
 
     def save(self, *args, **kwargs):
+        if self.due_amount == 0 and self.total_amount > 0:
+            self.status = "paid"
+        elif self.due_amount < 0:
+            self.status = "due"
+        else:
+            self.status = "pending"
         if not self.invoice_number:
             self.invoice_number = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         super().save(*args, **kwargs)

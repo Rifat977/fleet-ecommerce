@@ -19,28 +19,33 @@ from django import forms
 @admin.register(User)
 class CustomUserAdmin(ModelAdmin):
     list_display = ('email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_verified', 'role')
-    list_filter = ('is_staff', 'is_active')
+    list_filter = ('is_staff', 'is_active', 'role')
     search_fields = ('username', 'email')
     ordering = ('username',)
 
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Personal info', {'fields': ('first_name', 'last_name', 'email')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'phone_number', 'address')}),
         ('Permissions', {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'is_verified', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
 
-@admin.register(AdminProfile)
-class CustomUserAdmin(ModelAdmin):
-    list_display = ('user',)
+    def get_queryset(self, request):
+        """Ensure only the default view shows all users."""
+        return super().get_queryset(request)
 
-@admin.register(SalesRepresentativeProfile)
-class CustomUserAdmin(ModelAdmin):
-    list_display = ('user',)
 
-@admin.register(CustomerProfile)
-class CustomUserAdmin(ModelAdmin):
-    list_display = ('user',)
+# @admin.register(AdminProfile)
+# class CustomUserAdmin(ModelAdmin):
+#     list_display = ('user',)
+
+# @admin.register(SalesRepresentativeProfile)
+# class CustomUserAdmin(ModelAdmin):
+#     list_display = ('user',)
+
+# @admin.register(CustomerProfile)
+# class CustomUserAdmin(ModelAdmin):
+#     list_display = ('user',)
 
 @admin.register(Category)
 class CategoryAdmin(ModelAdmin):
@@ -143,7 +148,20 @@ class ProductAdmin(ModelAdmin):
                     'fields': ('image',)
                 }),
             )
-        return super().get_fieldsets(request, obj)  # Show all fields when editing
+        return (
+                (None, {
+                    'fields': ('name', 'slug', 'description', 'is_featured', 'price', 'discount')
+                }),
+                ('SEO', {
+                    'fields': ('seo_title', 'seo_description', 'seo_keywords')
+                }),
+                ('Relations', {
+                    'fields': ('category', 'tags', 'size')
+                }),
+                ('Media', {
+                    'fields': ('image',)
+                }),
+            ) 
 
     formfield_overrides = {
         models.TextField: {'widget': WysiwygWidget},  

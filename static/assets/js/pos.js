@@ -67,7 +67,7 @@ function addToCart(id, name, price, sku, in_stock) {
                 // existingItem.quantity += 1; 
             } else {
                 showAlert("New item, adding to cart.", "success");
-                cart.push({
+                cart.unshift({
                     id,
                     name,
                     price,
@@ -294,9 +294,9 @@ function checkout(){
             saveCart();
             updateCart();
             // Generate Invoice
-            // generateInvoice();
-            // redirect to the invoice page with _blank new tab
-            // window.open(`/pos/invoice/${data.pos_id}`, "_blank");
+            window.open(`/pos/invoice/${data.pos_id}`, "_blank");
+            // reload the page
+            location.reload();
         } else {
             showAlert(data.error, "danger");
         }

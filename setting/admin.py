@@ -10,5 +10,5 @@ import json
 # Register your models here.
 @admin.register(CompanySetting)
 class CompanySettingAdmin(ModelAdmin):
-    list_display = ("name", "address", "phone", "email", "logo", "tax", "currency", "currency_symbol", "currency_code")
+    list_display = ("name", "address_line_1", "address_line_2", "phone", "email")
     search_fields = ("name",)
