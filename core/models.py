@@ -19,7 +19,9 @@ class User(AbstractUser):
     is_verified = models.BooleanField(default=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
     phone_number = models.CharField(max_length=15, blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
+    street_address = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=255, blank=True, null=True)
+    state = models.CharField(max_length=255, blank=True, null=True)
 
     groups = models.ManyToManyField(
         Group,
@@ -234,16 +236,17 @@ class Product(models.Model):
                 return sku
 
     def generate_barcode(self):
-        """ Generate a barcode image for the SKU and save it to the barcode field. """
-        if self.sku:
+        if self.id and self.category_id and self.sku:
+            category_code = str(self.category_id).zfill(2) 
+            barcode_data = f"{self.id}-{category_code}-{self.sku}"
+
             code128 = barcode.get_barcode_class('code128')
-            barcode_obj = code128(self.sku, writer=ImageWriter())
+            barcode_obj = code128(barcode_data, writer=ImageWriter())
 
             buffer = BytesIO()
             barcode_obj.write(buffer)
             filename = f"barcode_{self.sku}.png"
 
-            # Save barcode image and update the field without infinite recursion
             self.barcode.save(filename, ContentFile(buffer.getvalue()), save=False)
             super().save(update_fields=['barcode'])
 
@@ -318,15 +321,62 @@ class Order(models.Model):
         ("canceled", "Canceled"),
     ]
 
+    PAYMENT_METHODS = [
+        ("cod", "Cash on Delivery"),
+        ("bank_transfer", "Bank Transfer"),
+        ("card", "Card"),
+    ]
+
+    PAYMENT_STATUS = [
+        ("pending", "Pending"),
+        ("paid", "Paid"),
+        ("failed", "Failed"),
+    ]
+
+    # user = models.ForeignKey('User', on_delete=models.CASCADE, related_name="orders")
+    # order_status = models.CharField(max_length=20, choices=ORDER_STATUSES, default="pending")
+    # subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    # total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    # discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Discount in amount")
+    # tax = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Tax in amount")
+    # shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Shipping cost in amount")
+    # shipping_address = models.TextField()
+    # payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default="cod")
+    # payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default="pending")
+    # created_at = models.DateTimeField(auto_now_add=True)
+    # updated_at = models.DateTimeField(auto_now=True)
+
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name="orders")
-    status = models.CharField(max_length=20, choices=ORDER_STATUSES, default="pending")
+    order_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
+
+    order_status = models.CharField(max_length=20, choices=ORDER_STATUSES, default="pending")
+
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    coupon = models.ForeignKey(Cupon, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Discount in amount")
+    tax = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Tax in amount")
+    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Shipping cost in amount")
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
+
     shipping_address = models.TextField()
+
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default="cod")
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default="pending")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
     def __str__(self):
-        return f"Order {self.id} - {self.user.username}"
+        return f"Order {self.order_id} - {self.user.username}"
+
+    def save(self, *args, **kwargs):
+        if not self.order_id:
+            self.order_id = self.generate_order_id()
+        super().save(*args, **kwargs)
+
+    def generate_order_id(self):
+        return f"FINCH-{''.join(random.choices(string.ascii_uppercase + string.digits, k=8))}"
 
     class Meta:
         verbose_name = "Order"
@@ -337,6 +387,8 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
+    color = models.ForeignKey(Color, on_delete=models.SET_NULL, null=True, blank=True, related_name="order_items")
+    size = models.ForeignKey(Size, on_delete=models.SET_NULL, null=True, blank=True, related_name="order_items")
     price_at_purchase = models.DecimalField(max_digits=10, decimal_places=2)  # Price at the time of purchase
 
     def total_price(self):

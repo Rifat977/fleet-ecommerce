@@ -16,7 +16,10 @@ from rest_framework.generics import RetrieveAPIView
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
+import json
+from django.core.exceptions import ObjectDoesNotExist
 
 
 User = get_user_model()
@@ -28,8 +31,8 @@ def register_user(request):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+            return JsonResponse(serializer.data, status=status.HTTP_201_CREATED)
+        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -38,7 +41,7 @@ def login_user(request):
     password = request.data.get("password")
 
     if not email or not password:
-        return Response({"detail": "Email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse({"detail": "Email and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         user = User.objects.get(email=email)
@@ -50,16 +53,16 @@ def login_user(request):
 
             user_data = CustomUserSerializer(user).data  
 
-            return Response({
+            return JsonResponse({
                 "access": access_token,
                 "refresh": str(refresh),
                 "user": user_data
             }, status=status.HTTP_200_OK)
 
-        return Response({"detail": "Invalid email or password"}, status=status.HTTP_401_UNAUTHORIZED)
+        return JsonResponse({"detail": "Invalid email or password"}, status=status.HTTP_401_UNAUTHORIZED)
 
     except User.DoesNotExist:
-        return Response({"detail": "Invalid email or password"}, status=status.HTTP_404_NOT_FOUND)
+        return JsonResponse({"detail": "Invalid email or password"}, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -153,14 +156,22 @@ class CategoryListView(generics.ListAPIView):
 
 
 
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def apply_cupon(request):
     if request.method == 'POST':
         try:
             cupon_code = request.POST.get("cupon_code")
             total_amount = request.POST.get("total_amount")
             customer = request.POST.get("customer")
-            customer = User.objects.get(id=customer) if customer else None
+            try:
+                customer = User.objects.get(id=customer)
+            except User.DoesNotExist:
+                return JsonResponse({"error": "Customer not found"}, status=status.HTTP_400_BAD_REQUEST)
             total_amount = float(total_amount)
+
+            print(cupon_code, total_amount, customer)
 
             cupon = Cupon.objects.get(code=cupon_code, is_active=True)
 
@@ -176,7 +187,7 @@ def apply_cupon(request):
             #     user=customer,
             # )
             
-            return JsonResponse({"message": "Cupon applied successfully", "total_amount": new_total_amount}, status=status.HTTP_200_OK)
+            return JsonResponse({"message": f"Cupon applied successfully. You got {cupon.discount}% off", "total_amount": new_total_amount}, status=status.HTTP_200_OK)
         except Cupon.DoesNotExist:
             return JsonResponse({"error": "Invalid coupon code"}, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
@@ -185,3 +196,143 @@ def apply_cupon(request):
             return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     else:
         return JsonResponse({"error": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED) 
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_product_stock(request):
+    if request.method != "POST":
+        return JsonResponse({"valid": False, "error": "Invalid request method."}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        product_id = data.get("product_id")
+        color = data.get("color")
+        color = Color.objects.get(hex_code=color)
+        quantity = data.get("quantity")
+
+        print(product_id, color, quantity)
+
+        product = Product.objects.get(id=product_id)
+        product_image = ProductImage.objects.get(product=product, color=color)
+        if product_image.stock > 0 and product_image.stock >= quantity:
+            return JsonResponse({"valid": True, "stock": product_image.stock}, status=200)
+        elif product_image.stock > 0 and product_image.stock < quantity:
+            return JsonResponse({"valid": False, "error": f"Only {product_image.stock} {product_image.color.name} {product_image.product.name} left in stock."})
+        else:
+            return JsonResponse({"valid": False, "error": "This color is out of stock."}, status=200)
+    except ObjectDoesNotExist:
+        return JsonResponse({"valid": False, "error": "Product not found."}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({"valid": False, "error": "Invalid JSON format."}, status=400)
+    except Exception as e:
+        return JsonResponse({"valid": False, "error": f"An unexpected error occurred: {str(e)}"}, status=500)
+    
+from setting.models import CompanySetting
+    
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_company_setting(request):
+    company_setting = CompanySetting.objects.first()
+    serializer = CompanySettingSerializer(company_setting)
+    return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+# @permission_classes([AllowAny])
+def place_order(request):
+    if request.method != "POST":
+        return JsonResponse({"valid": False, "error": "Invalid request method."}, status=405)
+
+    data = json.loads(request.body)
+    is_registered = data.get("is_registered")
+    orders = data.get("orders")
+    order_info = data.get("order_info")
+    billing_address = data.get("billing_address")
+    coupon = data.get("coupon")
+
+    if is_registered:
+        if not request.user.is_authenticated:
+            return JsonResponse({"valid": False, "error": "User not authenticated."}, status=401)
+        user = request.user
+    else:
+        serializer = UserRegistrationSerializer(data=billing_address)
+        if serializer.is_valid():
+            serializer.save()
+        else:
+            # return errors properly
+            error_messages = []
+            for field, errors in serializer.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
+            return JsonResponse({"valid": False, "error": error_messages})
+    
+    #update billing details for user profile except email password
+    user.first_name = billing_address.get("first_name")
+    user.last_name = billing_address.get("last_name")
+    user.phone_number = billing_address.get("phone_number")
+    user.street_address = billing_address.get("street_address")
+    user.city = billing_address.get("city")
+    user.state = billing_address.get("state")
+    user.save()
+    
+    # create order and order items. Also Validate coupon, tax, discount, product price, shipping fee, total amount
+    company_setting = CompanySetting.objects.first()
+    tax = company_setting.tax
+    shipping_fee = company_setting.shipping_fee
+    
+    # validate product price
+    srv_subtotal = 0
+    for order in orders:
+        product = Product.objects.get(id=order.get("product_id"))
+        srv_subtotal += product.price * order.get("quantity")
+
+    # validate coupon
+    if coupon:
+        try:
+            cupon_instance = Cupon.objects.get(code=coupon, is_active=True)
+        except Cupon.DoesNotExist:
+            return JsonResponse({"error": "Invalid coupon code"})
+
+        if srv_subtotal < cupon_instance.min_order_amount:
+            return JsonResponse({"error": f"Total amount is less than the minimum order amount: {cupon_instance.min_order_amount}"})
+        if cupon_instance.max_usage <= CuponApplied.objects.filter(cupon=cupon_instance, user=user).count():
+            return JsonResponse({"error": f"You have reached the maximum usage limit for this coupon"})
+
+    srv_total_price = srv_subtotal - (srv_subtotal * cupon_instance.discount / 100)
+    srv_tax = srv_total_price * tax / 100
+    srv_shipping_cost = shipping_fee
+    srv_total_price = srv_total_price + srv_tax + srv_shipping_cost
+    
+    order_info = Order.objects.create(
+        user=user,
+        subtotal=srv_subtotal,
+        coupon=cupon_instance,
+        discount=cupon_instance.discount if coupon else 0,
+        tax=srv_tax,
+        shipping_cost=srv_shipping_cost,
+        total_price=srv_total_price,
+        shipping_address=order_info.get("shipping_address"),
+        payment_method=order_info.get("payment_method"),
+    )
+
+    if order_info:
+        CuponApplied.objects.create(cupon=cupon_instance, user=user)
+    
+        order_items = []
+        for order in orders:
+            product = Product.objects.get(id=order.get("product_id"))
+            color = Color.objects.get(hex_code=order.get("color"))
+            size = Size.objects.get(name=order.get("size"))
+            product_image = ProductImage.objects.get(product=product, color=color)
+            order_items.append(OrderItem.objects.create(
+                order=order_info,
+                product=product,
+                quantity=order.get("quantity"),
+                color=product_image.color,
+                size=size,
+                price_at_purchase=product.price,
+            ))
+
+    return JsonResponse({"valid": True, "message": "Order placed successfully. Your order id is " + order_info.order_id}, status=200)
+    

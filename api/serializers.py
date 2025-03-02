@@ -15,7 +15,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'email', 'password', 'phone_number')
+        fields = ('first_name', 'last_name', 'email', 'password', 'phone_number', 'street_address', 'city', 'state')
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -25,7 +25,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password'],
             phone_number=validated_data.get('phone_number', ''),
-        )
+            street_address=validated_data.get('street_address', ''),
+            city=validated_data.get('city', ''),
+            state=validated_data.get('state', ''),
+        )   
         return user
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -38,7 +41,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'role']
+        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'role', 'phone_number', 'street_address', 'city', 'state']
 
 
 # Products
@@ -78,15 +81,15 @@ class AllProductSerializer(serializers.ModelSerializer):
     def get_images(self, obj):
         return [obj.image.url] if obj.image else []  # Assuming a single main image, modify if multiple
 
-class ProductImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductImage
-        fields = ["id", "image", "alt_text", "created_at"]
-
 class ColorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Color
         fields = ["id", "name", "hex_code"]
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = '__all__'
 
 class SizeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -96,9 +99,9 @@ class SizeSerializer(serializers.ModelSerializer):
 class ProductDetailsSerializer(serializers.ModelSerializer):
     currency = serializers.SerializerMethodField()
     category_name = serializers.CharField(source="category.name") 
-    color = ColorSerializer(many=True, read_only=True)  
     size = SizeSerializer(many=True, read_only=True) 
     gallery = ProductImageSerializer(many=True, read_only=True)
+    colors = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -114,8 +117,8 @@ class ProductDetailsSerializer(serializers.ModelSerializer):
             "barcode",
             "stock_quantity",
             "stock_status",
-            "color", 
             "size",
+            "colors",
             "category_name",
             "seo_title",
             "seo_description",
@@ -130,6 +133,18 @@ class ProductDetailsSerializer(serializers.ModelSerializer):
         ]
     def get_currency(self, obj):
         return "$"
+    
+    def get_colors(self, obj):
+        """
+        Extracts unique colors from related ProductImage objects.
+        """
+        colors = set()
+        for image in obj.gallery.all():  # Ensure gallery is correctly related
+            if image.color:  # Check if color exists (if ForeignKey)
+                colors.add((image.color.id, image.color.name, image.color.hex_code, image.image.url))
+        
+        return [{"id": c[0], "name": c[1], "hex_code": c[2], 'image': c[3]} for c in colors]
+
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -142,3 +157,28 @@ class CuponAppliedSerializer(serializers.ModelSerializer):
     class Meta:
         model = CuponApplied
         fields = "__all__"
+
+from setting.models import CompanySetting
+
+class CompanySettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanySetting
+        fields = "__all__"
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = "__all__"
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = "__all__"  
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = "__all__"
+
+

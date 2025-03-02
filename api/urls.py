@@ -15,5 +15,9 @@ urlpatterns = [
     path('category/', CategoryListView.as_view(), name='category-list'),
 
     path('apply-cupon/', apply_cupon, name='apply-cupon'),
+    path('verify-product-stock/', verify_product_stock, name='verify-product-stock'),
+
+    path('get-company-setting/', get_company_setting, name='get-company-setting'),
+    path('place-order/', place_order, name='place-order'),
 ]
 

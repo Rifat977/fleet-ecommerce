@@ -62,8 +62,8 @@ REST_FRAMEWORK = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=30),  # Access token valid for 30 days
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30), # Refresh token valid for 30 days
 }
 
 CORS_ALLOW_ALL_ORIGINS = True

@@ -25,7 +25,7 @@ class CustomUserAdmin(ModelAdmin):
 
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'phone_number', 'address')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'phone_number', 'street_address', 'city', 'state')}),
         ('Permissions', {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'is_verified', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
@@ -96,7 +96,10 @@ class ProductImageForm(forms.ModelForm):
         fields = '__all__'
         widgets = {
             'stock': forms.NumberInput(attrs={
-                'style': 'color: black; width: 70px; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'
+                'style': 'color: #c9cdd3; background-color: #111827; width: 70px; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'
+            }),
+            'color': forms.Select(attrs={
+                'style': 'color: #c9cdd3; background-color: #111827; width: auto; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'
             })
         }
     
@@ -110,7 +113,7 @@ class ProductImageForm(forms.ModelForm):
 # Inline admin for ProductImage
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
-    extra = 1  
+    extra = 0
     form = ProductImageForm
     fields = ('image', 'image_preview', 'color', 'stock',)  
     readonly_fields = ('image_preview',) 
@@ -155,6 +158,9 @@ class ProductAdmin(ModelAdmin):
                 ('SEO', {
                     'fields': ('seo_title', 'seo_description', 'seo_keywords')
                 }),
+                ('Barcode', {
+                    'fields': ('sku','barcode')
+                }),
                 ('Relations', {
                     'fields': ('category', 'tags', 'size')
                 }),
@@ -194,16 +200,44 @@ class CartItemAdmin(ModelAdmin):
     list_display = ("cart", "product", "quantity", "total_price")
     search_fields = ("cart__user__username", "product__name")
 
+
+
+class OrderItemForm(forms.ModelForm):
+    class Meta:
+        model = OrderItem
+        fields = '__all__'
+        widgets = {
+            'product': forms.Select(attrs={'style': 'color: #c9cdd3; background-color: #111827; width: auto; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'}),
+            'quantity': forms.NumberInput(attrs={'style': 'color: #c9cdd3; background-color: #111827; width: 50px; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'}),
+            'color': forms.Select(attrs={'style': 'color: #c9cdd3; background-color: #111827; width: auto; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'}),
+            'size': forms.Select(attrs={'style': 'color: #c9cdd3; background-color: #111827; width: 80px; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'}),
+            'price_at_purchase': forms.NumberInput(attrs={'style': 'color: #c9cdd3; background-color: #111827; width: 100px; text-align: center; font-weight: bold; border-radius: 5px; padding: 5px; border: 1px solid #ccc;'}),
+        }
+
+class OrderItemInline(admin.TabularInline):  
+    model = OrderItem
+    extra = 0  
+    readonly_fields = ('product', "quantity", 'color', 'size', 'price_at_purchase')
+    can_delete = False 
+    can_add = False  
+    form = OrderItemForm
 @admin.register(Order)
-class OrderAdmin(ModelAdmin):
-    list_display = ("user", "status", "total_price", "created_at", "updated_at")
-    list_filter = ("status", "created_at", "updated_at")
-    search_fields = ("user__username",)
+class OrderAdmin(ModelAdmin):  # Using Unfold's ModelAdmin
+    list_display = ("user", "order_id", "order_status", "total_price", "payment_status", "created_at")
+    list_filter = ("order_status", "payment_status", "created_at")
+    search_fields = ("user__username", "order_id")
+    inlines = [OrderItemInline]  # Add the inline here
 
 @admin.register(OrderItem)
 class OrderItemAdmin(ModelAdmin):
     list_display = ("order", "product", "quantity", "price_at_purchase", "total_price")
     search_fields = ("order__user__username", "product__name")
+
+
+
+
+
+
 
 @admin.register(Invoice)
 class InvoiceAdmin(ModelAdmin):
