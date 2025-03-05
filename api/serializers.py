@@ -172,6 +172,10 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product.name")
+    color_name = serializers.CharField(source="color.name")
+    size_name = serializers.CharField(source="size.name")
+
     class Meta:
         model = OrderItem
         fields = "__all__"  

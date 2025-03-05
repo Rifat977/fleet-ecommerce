@@ -185,20 +185,20 @@ admin.site.register(Product, ProductAdmin)
 
 
 
-@admin.register(Wishlist)
-class WishlistAdmin(ModelAdmin):
-    list_display = ("user", "product", "created_at")
-    search_fields = ("user__username", "product__name")
+# @admin.register(Wishlist)
+# class WishlistAdmin(ModelAdmin):
+#     list_display = ("user", "product", "created_at")
+#     search_fields = ("user__username", "product__name")
 
-@admin.register(Cart)
-class CartAdmin(ModelAdmin):
-    list_display = ("user", "created_at")
-    search_fields = ("user__username",)
+# @admin.register(Cart)
+# class CartAdmin(ModelAdmin):
+#     list_display = ("user", "created_at")
+#     search_fields = ("user__username",)
 
-@admin.register(CartItem)
-class CartItemAdmin(ModelAdmin):
-    list_display = ("cart", "product", "quantity", "total_price")
-    search_fields = ("cart__user__username", "product__name")
+# @admin.register(CartItem)
+# class CartItemAdmin(ModelAdmin):
+#     list_display = ("cart", "product", "quantity", "total_price")
+#     search_fields = ("cart__user__username", "product__name")
 
 
 
@@ -228,13 +228,10 @@ class OrderAdmin(ModelAdmin):  # Using Unfold's ModelAdmin
     search_fields = ("user__username", "order_id")
     inlines = [OrderItemInline]  # Add the inline here
 
-@admin.register(OrderItem)
-class OrderItemAdmin(ModelAdmin):
-    list_display = ("order", "product", "quantity", "price_at_purchase", "total_price")
-    search_fields = ("order__user__username", "product__name")
-
-
-
+# @admin.register(OrderItem)
+# class OrderItemAdmin(ModelAdmin):
+#     list_display = ("order", "product", "quantity", "price_at_purchase", "total_price")
+#     search_fields = ("order__user__username", "product__name")
 
 
 
@@ -255,9 +252,9 @@ class CuponAdmin(ModelAdmin):
     list_display = ("code", "discount", "is_active", "created_at", "updated_at")
     search_fields = ("code",)
 
-@admin.register(CuponApplied)
-class CuponAppliedAdmin(ModelAdmin):
-    list_display = ("user", "cupon", "created_at")
-    search_fields = ("user__username", "cupon__code")
+# @admin.register(CuponApplied)
+# class CuponAppliedAdmin(ModelAdmin):
+#     list_display = ("user", "cupon", "created_at")
+#     search_fields = ("user__username", "cupon__code")
 
 

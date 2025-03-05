@@ -19,5 +19,8 @@ urlpatterns = [
 
     path('get-company-setting/', get_company_setting, name='get-company-setting'),
     path('place-order/', place_order, name='place-order'),
+
+    path('get-orders/', get_orders, name='get-orders'),
+    path('get-order-items/<int:order_id>/', get_order_items, name='get-order-items'),
 ]
 

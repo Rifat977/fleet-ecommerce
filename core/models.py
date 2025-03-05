@@ -315,7 +315,7 @@ class CartItem(models.Model):
 class Order(models.Model):
     ORDER_STATUSES = [
         ("pending", "Pending"),
-        ("confirmed", "Order Confirmed"),
+        ("confirmed", "Confirmed"),
         ("shipped", "Shipped"),
         ("delivered", "Delivered"),
         ("canceled", "Canceled"),
