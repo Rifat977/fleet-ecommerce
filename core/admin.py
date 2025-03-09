@@ -13,15 +13,52 @@ import json
 
 from django.utils.html import format_html
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
 
 
+
+class CustomUserCreationForm(UserCreationForm):
+    password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'style': 'color: #c9cdd3; background-color: #111827; width: 100%; text-align: left; font-weight: normal; border-radius: 5px; padding: 8px; border: 1px solid #374151;',
+            'class': 'unfold-input'
+        })
+    )
+    password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={
+            'style': 'color: #c9cdd3; background-color: #111827; width: 100%; text-align: left; font-weight: normal; border-radius: 5px; padding: 8px; border: 1px solid #374151;',
+            'class': 'unfold-input'
+        })
+    )
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password1', 'password2')
+        widgets = {
+            'username': forms.TextInput(attrs={
+                'style': 'color: #c9cdd3; background-color: #111827; width: 100%; text-align: left; font-weight: normal; border-radius: 5px; padding: 8px; border: 1px solid #374151;',
+                'class': 'unfold-input'
+            }),
+            'email': forms.EmailInput(attrs={
+                'style': 'color: #c9cdd3; background-color: #111827; width: 100%; text-align: left; font-weight: normal; border-radius: 5px; padding: 8px; border: 1px solid #374151;',
+                'class': 'unfold-input'
+            })
+        }
 
 @admin.register(User)
-class CustomUserAdmin(ModelAdmin):
+class CustomUserAdmin(ModelAdmin, UserAdmin):
+    add_form = CustomUserCreationForm
     list_display = ('email', 'first_name', 'last_name', 'is_staff', 'is_active', 'is_verified', 'role')
     list_filter = ('is_staff', 'is_active', 'role')
     search_fields = ('username', 'email')
     ordering = ('username',)
+
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'email', 'password1', 'password2'),
+        }),
+    )
 
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
@@ -34,18 +71,6 @@ class CustomUserAdmin(ModelAdmin):
         """Ensure only the default view shows all users."""
         return super().get_queryset(request)
 
-
-# @admin.register(AdminProfile)
-# class CustomUserAdmin(ModelAdmin):
-#     list_display = ('user',)
-
-# @admin.register(SalesRepresentativeProfile)
-# class CustomUserAdmin(ModelAdmin):
-#     list_display = ('user',)
-
-# @admin.register(CustomerProfile)
-# class CustomUserAdmin(ModelAdmin):
-#     list_display = ('user',)
 
 @admin.register(Category)
 class CategoryAdmin(ModelAdmin):
@@ -132,6 +157,8 @@ class ProductAdmin(ModelAdmin):
     search_fields = ('name', 'sku', 'barcode', 'category__name')
     list_filter = ('category', 'created_at')
 
+    readonly_fields = ('total_units_sold', 'total_revenue', 'total_profit', 'created_at', 'updated_at', 'total_views')
+
     inlines = [ProductImageInline]
 
     def get_fieldsets(self, request, obj=None):
@@ -139,7 +166,17 @@ class ProductAdmin(ModelAdmin):
         if obj is None:  # If adding a new product
             return (
                 (None, {
-                    'fields': ('name', 'slug', 'description', 'is_featured', 'price', 'discount')
+                    'fields': ('name', 'slug', 'description', 'is_featured')
+                }),
+                ('Sales & Inventory', {
+                    'fields': (
+                        ('cost_price', 'price', 'discount'),  # Pricing fields
+                        ('stock_quantity', 'total_views'),    # Current status
+                        ('total_units_sold', 'total_revenue'),  # Sales metrics
+                        ('total_profit',),  # Financial outcome
+                    ),
+                    'classes': ('collapse',),
+                    'description': 'Product pricing, inventory, and performance metrics'
                 }),
                 ('SEO', {
                     'fields': ('seo_title', 'seo_description', 'seo_keywords')
@@ -153,7 +190,17 @@ class ProductAdmin(ModelAdmin):
             )
         return (
                 (None, {
-                    'fields': ('name', 'slug', 'description', 'is_featured', 'price', 'discount')
+                    'fields': ('name', 'slug', 'description', 'is_featured')
+                }),
+                ('Sales & Inventory', {
+                    'fields': (
+                        ('cost_price', 'price', 'discount'),  # Pricing fields
+                        ('stock_quantity', 'total_views'),    # Current status
+                        ('total_units_sold', 'total_revenue'),  # Sales metrics
+                        ('total_profit',),  # Financial outcome
+                    ),
+                    'classes': ('collapse',),
+                    'description': 'Product pricing, inventory, and performance metrics'
                 }),
                 ('SEO', {
                     'fields': ('seo_title', 'seo_description', 'seo_keywords')
@@ -236,15 +283,15 @@ class OrderAdmin(ModelAdmin):  # Using Unfold's ModelAdmin
 
 
 
-@admin.register(Invoice)
-class InvoiceAdmin(ModelAdmin):
-    list_display = ("invoice_number", "order", "issued_date", "due_date")
-    search_fields = ("invoice_number", "order__user__username")
+# @admin.register(Invoice)
+# class InvoiceAdmin(ModelAdmin):
+#     list_display = ("invoice_number", "order", "issued_date", "due_date")
+#     search_fields = ("invoice_number", "order__user__username")
 
-@admin.register(ProductAnalytics)
-class ProductAnalyticsAdmin(ModelAdmin):
-    list_display = ("product", "views", "purchases")
-    search_fields = ("product__name",)
+# @admin.register(ProductAnalytics)
+# class ProductAnalyticsAdmin(ModelAdmin):
+#     list_display = ("product", "views", "purchases")
+#     search_fields = ("product__name",)
 
 
 @admin.register(Cupon)
@@ -252,9 +299,14 @@ class CuponAdmin(ModelAdmin):
     list_display = ("code", "discount", "is_active", "created_at", "updated_at")
     search_fields = ("code",)
 
+
 # @admin.register(CuponApplied)
 # class CuponAppliedAdmin(ModelAdmin):
 #     list_display = ("user", "cupon", "created_at")
 #     search_fields = ("user__username", "cupon__code")
 
 
+@admin.register(VisitorSession)
+class VisitorSessionAdmin(ModelAdmin):
+    list_display = ("ip_address", "country", "session_key")
+    search_fields = ("ip_address", "country", "session_key")

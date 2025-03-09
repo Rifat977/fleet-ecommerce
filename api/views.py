@@ -387,6 +387,12 @@ def place_order(request):
 
                 product_image.stock -= order.get("quantity")
                 product_image.save()
+
+                product.total_units_sold += order.get("quantity")
+                product.total_revenue += product.price * order.get("quantity")
+                product.total_profit += (product.price - product.cost_price) * order.get("quantity")
+                product.save()
+
     except Exception as e:
         return JsonResponse({"valid": False, "error": f"An unexpected error occurred: {str(e)}"}, status=500)
 

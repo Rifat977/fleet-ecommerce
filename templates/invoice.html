@@ -4,6 +4,8 @@
 
 {% load static %}
 
+{% load custom_filters %}
+
 {% block content %}
 <div class="container-fluid">
 
@@ -32,7 +34,7 @@
                                     <tbody>
                                         <tr>
                                             <td class="p-0 pe-5 py-1">
-                                                <p class="mb-0 text-dark fw-semibold"> Invoice : </p>
+                                                <p class="mb-0 text-dark fw-semibold"> INVOICE : </p>
                                             </td>
                                             <td class="text-end text-dark fw-semibold px-0 py-1">{{ pos.invoice_number }}</td>
                                         </tr>
@@ -56,13 +58,14 @@
                                         </tr>
                                         <tr>
                                             <td class="p-0 pe-5 py-1">
-                                                <p class="mb-0">Status : </p>
+                                                <p class="mb-0">Payment Status : </p>
                                             </td>
                                             <td class="text-end px-0 py-1">
                                                 {% if pos.status == "paid" %}
                                                     <span class="badge bg-success text-white  px-2 py-1 fs-13">Paid</span>
                                                 {% elif pos.status == "due" %}
                                                     <span class="badge bg-warning text-white  px-2 py-1 fs-13">Due</span>
+                                                    <span class="text-end text-dark fw-medium px-0 py-1">{{ currency_symbol }}{{ pos.due_amount|floatformat:2 }}</span>
                                                 {% elif pos.status == "cancelled" %}
                                                     <span class="badge bg-danger text-white  px-2 py-1 fs-13">Cancelled</span>
                                                 {% elif pos.status == "pending" %}
@@ -153,13 +156,13 @@
                                             <td class="text-end p-0 pe-5 py-2">
                                                 <p class="mb-0"> Sub Total : </p>
                                             </td>
-                                            <td class="text-end text-dark fw-medium  py-2">{{ currency_symbol }}{{ pos.total_amount|floatformat:2 }}</td>
+                                            <td class="text-end text-dark fw-medium  py-2">{{ currency_symbol }}{{ pos.sub_total }}</td>
                                         </tr>
                                         <tr>
                                             <td class="text-end p-0 pe-5 py-2">
                                                 <p class="mb-0">Estimated Tax: </p>
                                             </td>
-                                            <td class="text-end text-dark fw-medium  py-2">{{ pos.tax|floatformat:2 }}%</td>
+                                            <td class="text-end text-dark fw-medium py-2">{{ pos.tax|floatformat:2 }}% ({{ currency_symbol }}{{ pos.sub_total|tax_amount:pos.tax|floatformat:2 }})</td>
                                         </tr>
                                         <tr class="border-top">
                                             <td class="text-end p-0 pe-5 py-2">

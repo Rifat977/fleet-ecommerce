@@ -242,6 +242,7 @@ def checkout(request):
             pos = POS.objects.create(
                 user=customer,
                 total_amount=total,
+                sub_total=subtotal,
                 due_amount=due,
                 tax=tax,
                 discount=0,
@@ -283,6 +284,11 @@ def checkout(request):
 
                     product_image.stock -= item.get("quantity")
                     product_image.save()
+
+                    product.total_units_sold += item.get("quantity")
+                    product.total_revenue += product.price * item.get("quantity")
+                    product.total_profit += (product.price - product.cost_price) * item.get("quantity")
+                    product.save()
 
                 except ObjectDoesNotExist:
                     return JsonResponse({"valid": False, "error": "Product or color not found."}, status=400)

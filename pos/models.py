@@ -21,9 +21,10 @@ class POS(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="pos", null=True, blank=True)
     sale_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    sub_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     due_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Discount percentage on total sale
-    tax = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Tax percentage
+    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Discount in percentage")  # Discount percentage on total sale
+    tax = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Tax in percentage")  # Tax percentage
     invoice_number = models.CharField(max_length=50, null=True, blank=True, unique=True)
     payment_method = models.CharField(
         max_length=50,
@@ -36,7 +37,7 @@ class POS(models.Model):
     def save(self, *args, **kwargs):
         if self.due_amount == 0 and self.total_amount > 0:
             self.status = "paid"
-        elif self.due_amount < 0:
+        elif self.due_amount > 0:
             self.status = "due"
         else:
             self.status = "pending"
@@ -47,8 +48,8 @@ class POS(models.Model):
     @property
     def net_total(self):
         """Calculate the total after applying discount and adding tax."""
-        discount_amount = (self.total_amount * self.discount) / 100
-        taxable_amount = self.total_amount - discount_amount
+        discount_amount = (self.sub_total * self.discount) / 100
+        taxable_amount = self.sub_total - discount_amount
         tax_amount = (taxable_amount * self.tax) / 100
         return taxable_amount + tax_amount
 

@@ -51,26 +51,26 @@ class User(AbstractUser):
         verbose_name = "User"
         verbose_name_plural = "                    All Users"
 
-class AdminProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
+# class AdminProfile(models.Model):
+#     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
 
-    class Meta:
-        verbose_name = "Admins"
-        verbose_name_plural = "                   Admins"
+#     class Meta:
+#         verbose_name = "Admins"
+#         verbose_name_plural = "                   Admins"
 
-class SalesRepresentativeProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='sales_rep_profile')
+# class SalesRepresentativeProfile(models.Model):
+#     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='sales_rep_profile')
 
-    class Meta:
-        verbose_name = "Sales Representives"
-        verbose_name_plural = "                  Sales Representives"
+#     class Meta:
+#         verbose_name = "Sales Representives"
+#         verbose_name_plural = "                  Sales Representives"
 
-class CustomerProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='customer_profile')
+# class CustomerProfile(models.Model):
+#     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='customer_profile')
 
-    class Meta:
-        verbose_name = "Customers"
-        verbose_name_plural = "                 Customers"
+#     class Meta:
+#         verbose_name = "Customers"
+#         verbose_name_plural = "                 Customers"
 
 class Cupon(models.Model):
     code = models.CharField(max_length=255, unique=True)
@@ -173,8 +173,15 @@ class Product(models.Model):
     is_featured = models.BooleanField(default=False)
     
     # Price and discount
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)  # Discount in percentage
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Cost price per unit")
+    price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Selling price per unit")
+
+    total_units_sold = models.PositiveIntegerField(default=0)
+    total_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total_profit = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total_views = models.PositiveIntegerField(default=0)    
+
+    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Discount in percentage")  # Discount in percentage
     
     # Barcode and stock
     barcode = models.ImageField(upload_to="products/barcodes", blank=True, null=True)  # Barcode as image
@@ -211,6 +218,7 @@ class Product(models.Model):
     @property
     def discounted_price(self):
         return self.price * (1 - self.discount / 100)
+
 
     def __str__(self):
         return self.name
@@ -333,19 +341,6 @@ class Order(models.Model):
         ("failed", "Failed"),
     ]
 
-    # user = models.ForeignKey('User', on_delete=models.CASCADE, related_name="orders")
-    # order_status = models.CharField(max_length=20, choices=ORDER_STATUSES, default="pending")
-    # subtotal = models.DecimalField(max_digits=10, decimal_places=2)
-    # total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    # discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Discount in amount")
-    # tax = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Tax in amount")
-    # shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Shipping cost in amount")
-    # shipping_address = models.TextField()
-    # payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default="cod")
-    # payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default="pending")
-    # created_at = models.DateTimeField(auto_now_add=True)
-    # updated_at = models.DateTimeField(auto_now=True)
-
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name="orders")
     order_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
 
@@ -430,22 +425,34 @@ class Wishlist(models.Model):
         verbose_name_plural = "   Wishlists"
 
 
-class ProductAnalytics(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="analytics")
-    views = models.PositiveIntegerField(default=0)
-    purchases = models.PositiveIntegerField(default=0)
+# class ProductAnalytics(models.Model):
+#     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="analytics")
+#     views = models.PositiveIntegerField(default=0)
+#     purchases = models.PositiveIntegerField(default=0)
+
+#     def __str__(self):
+#         return f"{self.product.name} Analytics"
+
+#     class Meta:
+#         verbose_name = "Product Analytics"
+#         verbose_name_plural = "  Product Analytics"
+
+
+
+
+class VisitorSession(models.Model):
+    session_key = models.CharField(max_length=40, unique=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+    country = models.CharField(max_length=255, blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.product.name} Analytics"
+        return f"Visitor from {self.country}"
 
     class Meta:
-        verbose_name = "Product Analytics"
-        verbose_name_plural = "  Product Analytics"
-
-
-
-
-
+        verbose_name = "Visitor Session"
+        verbose_name_plural = "Visitor Sessions"
 
 
 
@@ -456,7 +463,24 @@ class ProductAnalytics(models.Model):
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
+
 @receiver(post_save, sender=ProductImage)
 @receiver(post_delete, sender=ProductImage)
-def update_product_stock(sender, instance, **kwargs):
-    instance.product.update_stock_quantity()
+def update_product_stock_from_image(sender, instance, **kwargs):
+    if kwargs.get('raw', False):  # Skip during loaddata
+        return
+    
+    # Update the product's stock using update() to avoid recursion
+    total_stock = instance.product.gallery.aggregate(total=Sum('stock'))['total'] or 0
+    Product.objects.filter(pk=instance.product.pk).update(stock_quantity=total_stock)
+
+@receiver(post_save, sender=Product)
+@receiver(post_delete, sender=Product)
+def update_product_stock_from_product(sender, instance, **kwargs):
+    if kwargs.get('raw', False):  # Skip during loaddata
+        return
+        
+    if not kwargs.get('update_fields') or 'stock_quantity' not in kwargs.get('update_fields', []):
+        # Update stock using update() to avoid recursion
+        total_stock = instance.gallery.aggregate(total=Sum('stock'))['total'] or 0
+        Product.objects.filter(pk=instance.pk).update(stock_quantity=total_stock)

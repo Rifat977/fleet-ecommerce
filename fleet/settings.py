@@ -14,10 +14,11 @@ SECRET_KEY = 'django-insecure-hky+k)%#3j+9in+@)k#a&lyn56z$p0zf+j3zj+6e$5pcjasasu
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 SITE_URL = "http://127.0.0.1:8000"
 
+GEOIP_PATH = os.path.join(BASE_DIR, 'geoip')
 
 # Application definition
 
@@ -78,6 +79,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.GeoIPMiddleware',
+    
 ]
 
 ROOT_URLCONF = 'fleet.urls'
@@ -95,6 +98,9 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'setting.context_preprocessor.currency_context',
             ],
+            'libraries': {
+                'custom_filters': 'core.templatetags.custom_filters',
+            },
         },
     },
 ]
