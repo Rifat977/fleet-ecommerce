@@ -19,12 +19,14 @@ from django.contrib.auth.forms import UserCreationForm
 
 class CustomUserCreationForm(UserCreationForm):
     password1 = forms.CharField(
+        label="Password",
         widget=forms.PasswordInput(attrs={
             'style': 'color: #c9cdd3; background-color: #111827; width: 100%; text-align: left; font-weight: normal; border-radius: 5px; padding: 8px; border: 1px solid #374151;',
             'class': 'unfold-input'
         })
     )
     password2 = forms.CharField(
+        label="Confirm Password",
         widget=forms.PasswordInput(attrs={
             'style': 'color: #c9cdd3; background-color: #111827; width: 100%; text-align: left; font-weight: normal; border-radius: 5px; padding: 8px; border: 1px solid #374151;',
             'class': 'unfold-input'
